@@ -39,5 +39,7 @@
 - `vercel.json` で framework を `nextjs` に固定しています。
 - エラー `No Next.js version detected` が出る場合は、ほぼ Root Directory の設定不一致です。
 
-## PR再作成メモ
-- ブランチ削除後にPRを再作成する場合は、最新コミットを含む新規ブランチを作成して push してください。
+## 運用メモ（mainブランチ更新）
+- ブランチを切らず、常に `main` を最新化して直接更新する運用に統一します。
+- 変更前に `git pull origin main` を実行してから作業してください。
+- 競合が起きた場合は `main` 上で解消して push します。
