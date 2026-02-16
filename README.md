@@ -32,14 +32,3 @@
 3. **全部5 → 境界確認（50%以上で左）**
    - Q1〜Q20すべて5
    - 期待: `Lpct/Spct/Opct/Npct` は各50、code=`LSON`
-
-## Vercelデプロイ時の注意（Next.js未検出エラー対策）
-- Vercel Project Settings の **Root Directory** をリポジトリ直下（`.`）にしてください。
-- このリポジトリは Next.js を `dependencies.next` で管理しています。
-- `vercel.json` で framework を `nextjs` に固定しています。
-- エラー `No Next.js version detected` が出る場合は、ほぼ Root Directory の設定不一致です。
-
-## 運用メモ（mainブランチ更新）
-- ブランチを切らず、常に `main` を最新化して直接更新する運用に統一します。
-- 変更前に `git pull origin main` を実行してから作業してください。
-- 競合が起きた場合は `main` 上で解消して push します。
