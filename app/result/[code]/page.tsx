@@ -113,7 +113,7 @@ export default function ResultPage({ params, searchParams }: Props) {
   const npct = Number(searchParams.npct ?? 50);
 
   // Parse codes for description
-  const codes = upperCode.split('') as (keyof typeof axisDefinitions)[];
+  const codes = upperCode.split('') as (keyof typeof staticAxisDefinitions)[];
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6 pt-12 pb-24">
