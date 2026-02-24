@@ -3,7 +3,7 @@
 import { questions } from '@/data/questions';
 import { AgeBand, MemberMode } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState, useEffect } from 'react';
 
 const ageBands: { value: AgeBand; label: string }[] = [
   { value: 'u18', label: '18歳未満' },
@@ -14,8 +14,12 @@ const ageBands: { value: AgeBand; label: string }[] = [
   { value: '55_plus', label: '55歳以上' }
 ];
 
+type Step = 'profile' | 'quiz' | 'age';
+
 export default function QuizPage() {
   const router = useRouter();
+  const [step, setStep] = useState<Step>('profile');
+  const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
   const [oshiGroup, setOshiGroup] = useState('');
   const [memberMode, setMemberMode] = useState<MemberMode>('empty');
   const [oshiMember, setOshiMember] = useState('');
@@ -24,31 +28,39 @@ export default function QuizPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const canSubmit = useMemo(() => {
-    const validGroup = oshiGroup.trim().length > 0 && oshiGroup.trim().length <= 50;
-    const validMember = memberMode !== 'named' || (oshiMember.trim().length > 0 && oshiMember.trim().length <= 50);
-    return validGroup && validMember && ageBand !== '';
-  }, [oshiGroup, memberMode, oshiMember, ageBand]);
+  const progress = useMemo(() => {
+    if (step === 'profile') return 5;
+    if (step === 'age') return 95;
+    return Math.floor(10 + (currentQuizIdx / questions.length) * 80);
+  }, [step, currentQuizIdx]);
 
-  const updateAnswer = (index: number, value: number) => {
+  const canGoToQuiz = useMemo(() => {
+    return oshiGroup.trim().length > 0 && (memberMode !== 'named' || oshiMember.trim().length > 0);
+  }, [oshiGroup, memberMode, oshiMember]);
+
+  const updateAnswer = (value: number) => {
     setAnswers((prev) => {
       const next = [...prev];
-      next[index] = value;
+      next[currentQuizIdx] = value;
       return next;
     });
+
+    // Auto-advance with small delay for better UX
+    if (currentQuizIdx < questions.length - 1) {
+      setTimeout(() => setCurrentQuizIdx(idx => idx + 1), 200);
+    } else {
+      setTimeout(() => setStep('age'), 200);
+    }
   };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!canSubmit) {
-      setError('必須項目を入力してください。年代は必須です。');
+    if (!ageBand) {
+      setError('年代を選択してください');
       return;
     }
 
     setLoading(true);
-
     try {
       const payload = {
         oshi_group: oshiGroup.trim(),
@@ -65,16 +77,12 @@ export default function QuizPage() {
       });
 
       const data = await res.json();
-      if (!res.ok || !data?.score?.code) {
-        throw new Error(data?.error ?? '診断結果の取得に失敗しました');
-      }
+      if (!res.ok) throw new Error(data?.error ?? '診断結果の取得に失敗しました');
 
-      const score = data.score;
+      const { score } = data;
       const params = new URLSearchParams({
-        lpct: String(score.Lpct),
-        spct: String(score.Spct),
-        opct: String(score.Opct),
-        npct: String(score.Npct)
+        lpct: String(score.Lpct), spct: String(score.Spct),
+        opct: String(score.Opct), npct: String(score.Npct)
       });
       router.push(`/result/${score.code}?${params.toString()}`);
     } catch (err) {
@@ -84,79 +92,150 @@ export default function QuizPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="mb-6 text-2xl font-bold">推しタイプ診断</h1>
-      <form className="space-y-8" onSubmit={onSubmit}>
-        <section className="space-y-4 rounded border bg-white p-4">
-          <h2 className="text-xl font-semibold">プロフィール</h2>
-          <label className="block">
-            <span className="mb-1 block text-sm">推しグループ（必須）</span>
-            <input className="w-full rounded border p-2" value={oshiGroup} onChange={(e) => setOshiGroup(e.target.value)} maxLength={50} required />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-sm">推しメン状態（任意）</span>
-            <select className="w-full rounded border p-2" value={memberMode} onChange={(e) => setMemberMode(e.target.value as MemberMode)}>
-              <option value="empty">未入力</option>
-              <option value="named">特定メンバーあり</option>
-              <option value="hakoshi">箱推し</option>
-              <option value="undecided">未確定</option>
-            </select>
-          </label>
-          {memberMode === 'named' && (
-            <label className="block">
-              <span className="mb-1 block text-sm">推しメン名</span>
-              <input className="w-full rounded border p-2" value={oshiMember} onChange={(e) => setOshiMember(e.target.value)} maxLength={50} required />
-            </label>
-          )}
-        </section>
+    <main className="mx-auto flex min-h-screen max-w-2xl flex-col p-6 pt-12">
+      {/* Progress Bar */}
+      <div className="mb-12 space-y-2">
+        <div className="flex justify-between text-xs font-medium text-gray-400">
+          <span>Progress</span>
+          <span>{progress}%</span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+          <div
+            className="premium-gradient h-full transition-all duration-500 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
 
-        <section className="space-y-4 rounded border bg-white p-4">
-          <h2 className="text-xl font-semibold">Q1〜Q20（1:まったく当てはまらない〜5:とても当てはまる）</h2>
-          {questions.map((question, index) => (
-            <div key={question} className="rounded border p-3">
-              <p className="mb-2 text-sm font-medium">Q{index + 1}. {question}</p>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((choice) => (
-                  <label key={choice} className="flex items-center gap-1 text-sm">
-                    <input
-                      type="radio"
-                      name={`q-${index + 1}`}
-                      checked={answers[index] === choice}
-                      onChange={() => updateAnswer(index, choice)}
-                    />
-                    {choice}
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-        </section>
-
-        <section className="space-y-4 rounded border bg-white p-4">
-          <h2 className="text-xl font-semibold">年代（必須）</h2>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {ageBands.map((band) => (
-              <label key={band.value} className="flex items-center gap-2 rounded border p-2">
+      <div className="animate-fade-in relative flex-1">
+        {step === 'profile' && (
+          <div className="space-y-8">
+            <header className="space-y-2">
+              <h1 className="text-2xl font-bold text-gray-900">推しについて教えてください</h1>
+              <p className="text-sm text-gray-500">あなたの推し活スタイルに合わせて分析します。</p>
+            </header>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">推しグループ名 *</label>
                 <input
-                  type="radio"
-                  name="age_band"
-                  value={band.value}
-                  checked={ageBand === band.value}
-                  onChange={() => setAgeBand(band.value)}
-                  required
+                  className="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-focus focus:border-purple-300 focus:outline-none focus:ring focus:ring-purple-100 focus:ring-opacity-50"
+                  placeholder="例: SEVENTEEN, NewJeans"
+                  value={oshiGroup}
+                  onChange={(e) => setOshiGroup(e.target.value)}
+                  maxLength={50}
                 />
-                {band.label}
-              </label>
-            ))}
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">推しメン（任意）</label>
+                <select
+                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white p-4 shadow-sm focus:border-purple-300 focus:outline-none"
+                  value={memberMode}
+                  onChange={(e) => setMemberMode(e.target.value as MemberMode)}
+                >
+                  <option value="empty">未入力</option>
+                  <option value="named">特定メンバーあり</option>
+                  <option value="hakoshi">箱推し</option>
+                  <option value="undecided">まだ決まっていない</option>
+                </select>
+              </div>
+              {memberMode === 'named' && (
+                <div className="animate-fade-in space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700">メンバー名 *</label>
+                  <input
+                    className="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm focus:border-purple-300 focus:outline-none"
+                    value={oshiMember}
+                    onChange={(e) => setOshiMember(e.target.value)}
+                    maxLength={50}
+                  />
+                </div>
+              )}
+            </div>
+            <button
+              disabled={!canGoToQuiz}
+              onClick={() => setStep('quiz')}
+              className="premium-gradient w-full rounded-full py-4 font-bold text-white shadow-lg transition-opacity disabled:opacity-30"
+            >
+              診断をスタート
+            </button>
           </div>
-        </section>
+        )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {step === 'quiz' && (
+          <div className="space-y-12">
+            <header className="space-y-2">
+              <div className="text-xs font-bold tracking-widest text-purple-500 uppercase">Question {currentQuizIdx + 1} / {questions.length}</div>
+              <h2 className="text-xl font-bold leading-snug text-gray-900 sm:text-2xl">
+                {questions[currentQuizIdx]}
+              </h2>
+            </header>
 
-        <button disabled={loading || !canSubmit} className="rounded bg-black px-6 py-3 text-white disabled:opacity-40" type="submit">
-          {loading ? '判定中...' : '結果を見る'}
-        </button>
-      </form>
+            <div className="space-y-4">
+              {[
+                { v: 5, l: 'とても当てはまる' },
+                { v: 4, l: 'やや当てはまる' },
+                { v: 3, l: 'どちらともいえない' },
+                { v: 2, l: 'あまり当てはまらない' },
+                { v: 1, l: 'まったく当てはまらない' }
+              ].map((choice) => (
+                <button
+                  key={choice.v}
+                  onClick={() => updateAnswer(choice.v)}
+                  className={`w-full rounded-2xl border-2 p-5 text-left transition-all hover:bg-purple-50 active:scale-[0.98] ${answers[currentQuizIdx] === choice.v ? 'border-purple-500 bg-purple-50 font-bold text-purple-700' : 'border-gray-100 bg-white text-gray-600'
+                    }`}
+                >
+                  {choice.l}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-between pt-4">
+              <button
+                onClick={() => currentQuizIdx === 0 ? setStep('profile') : setCurrentQuizIdx(i => i - 1)}
+                className="text-sm font-medium text-gray-400 hover:text-gray-600"
+              >
+                ← 前に戻る
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'age' && (
+          <form className="space-y-8" onSubmit={onSubmit}>
+            <header className="space-y-2">
+              <h2 className="text-2xl font-bold text-gray-900">最後に、年代を教えてください</h2>
+              <p className="text-sm text-gray-500">あと一歩で診断結果が出ます。</p>
+            </header>
+            <div className="grid grid-cols-2 gap-3">
+              {ageBands.map((band) => (
+                <button
+                  key={band.value}
+                  type="button"
+                  onClick={() => setAgeBand(band.value)}
+                  className={`rounded-xl border-2 p-4 text-center transition-all ${ageBand === band.value ? 'border-purple-500 bg-purple-50 font-bold text-purple-700' : 'border-gray-100 bg-white text-gray-600 hover:border-gray-200'
+                    }`}
+                >
+                  {band.label}
+                </button>
+              ))}
+            </div>
+            {error && <p className="text-center text-sm text-red-500">{error}</p>}
+            <button
+              disabled={loading || !ageBand}
+              type="submit"
+              className="premium-gradient w-full rounded-full py-4 font-bold text-white shadow-lg transition-opacity disabled:opacity-30"
+            >
+              {loading ? '解析中...' : '診断結果を見る'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep('quiz')}
+              className="block w-full text-center text-sm font-medium text-gray-400 hover:text-gray-600"
+            >
+              ← 質問に戻る
+            </button>
+          </form>
+        )}
+      </div>
     </main>
   );
 }
