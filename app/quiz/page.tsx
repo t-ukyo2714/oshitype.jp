@@ -27,6 +27,7 @@ export default function QuizPage() {
   const [ageBand, setAgeBand] = useState<AgeBand | ''>('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
 
   const progress = useMemo(() => {
     if (step === 'profile') return 5;
@@ -39,6 +40,9 @@ export default function QuizPage() {
   }, [oshiGroup, memberMode, oshiMember]);
 
   const updateAnswer = (value: number) => {
+    if (isAdvancing) return;
+    setIsAdvancing(true);
+
     setAnswers((prev) => {
       const next = [...prev];
       next[currentQuizIdx] = value;
@@ -47,9 +51,15 @@ export default function QuizPage() {
 
     // Auto-advance with small delay for better UX
     if (currentQuizIdx < questions.length - 1) {
-      setTimeout(() => setCurrentQuizIdx(idx => idx + 1), 300);
+      setTimeout(() => {
+        setCurrentQuizIdx(idx => idx + 1);
+        setIsAdvancing(false);
+      }, 300);
     } else {
-      setTimeout(() => setStep('age'), 400);
+      setTimeout(() => {
+        setStep('age');
+        setIsAdvancing(false);
+      }, 400);
     }
   };
 
@@ -192,7 +202,7 @@ export default function QuizPage() {
                 { v: 1, l: 'まったく当てはまらない' }
               ].map((choice) => (
                 <button
-                  key={choice.v}
+                  key={`${currentQuizIdx}-${choice.v}`}
                   onClick={() => updateAnswer(choice.v)}
                   className={`w-full rounded-2xl border-2 p-5 text-left transition-all hover:bg-purple-50 active:scale-[0.98] ${answers[currentQuizIdx] === choice.v ? 'border-purple-500 bg-purple-50 font-bold text-purple-700 scale-[1.02] shadow-md' : 'border-gray-100 bg-white text-gray-600'
                     }`}
