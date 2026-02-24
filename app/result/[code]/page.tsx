@@ -106,7 +106,7 @@ export default function ResultPage({ params, searchParams }: Props) {
           <AxisBar labelLeft="Loop" labelRight="Keep" value={lpct} color="#6c5ce7" />
           <AxisBar labelLeft="Solo" labelRight="Group" value={spct} color="#a29bfe" />
           <AxisBar labelLeft="Observe" labelRight="Express" value={opct} color="#6c5ce7" />
-          <AxisBar labelLeft="Now" labelRight="Track" value={npct} color="#a29bfe" />
+          <AxisBar labelLeft="iNtuitive" labelRight="Track" value={npct} color="#a29bfe" />
         </div>
       </section>
 
