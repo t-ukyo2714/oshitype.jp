@@ -1,13 +1,39 @@
-'use client';
-
-import { resultCopy as staticResultCopy } from '@/data/resultCopy';
-import { axisDefinitions as staticAxisDefinitions } from '@/data/axisDefinitions';
-import { buildShareIntentUrl, isResultCode } from '@/lib/result';
+import prisma from '@/lib/prisma';
+import { isResultCode } from '@/lib/result';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { ShareButton } from './ShareButton';
+import { Metadata } from 'next';
+
+export async function generateMetadata({ params }: { params: { code: string } }): Promise<Metadata> {
+  const upperCode = params.code.toUpperCase();
+  if (!isResultCode(upperCode)) return {};
+
+  const result = await prisma.resultContent.findUnique({ where: { code: upperCode } });
+  if (!result) return {};
+
+  const title = `診断結果: ${result.title} | 推しタイプ診断`;
+  const description = result.shareText || '私の推し活タイプを診断しました！';
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: result.imageUrl ? [result.imageUrl] : [],
+    },
+    twitter: {
+      card: result.imageUrl ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: result.imageUrl ? [result.imageUrl] : [],
+    },
+  };
+}
 
 function ContentCard({ title, items, icon }: { title: string; items: string[]; icon: string }) {
+  if (!items || items.length === 0) return null;
   return (
     <section className="animate-fade-in rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
@@ -47,64 +73,16 @@ function AxisBar({ labelLeft, labelRight, value, color }: { labelLeft: string; l
   );
 }
 
-type Props = {
-  params: { code: string };
-  searchParams: { lpct?: string; spct?: string; opct?: string; npct?: string };
-};
-
-
-
-
-
-export default function ResultPage({ params, searchParams }: Props) {
+export default async function ResultPage({ params, searchParams }: { params: { code: string }; searchParams: { lpct?: string; spct?: string; opct?: string; npct?: string } }) {
   const upperCode = params.code.toUpperCase();
   if (!isResultCode(upperCode)) notFound();
 
-  const [copy, setCopy] = useState<any>(staticResultCopy[upperCode as keyof typeof staticResultCopy]);
-  const [axes, setAxes] = useState<any>(staticAxisDefinitions);
+  const [result, axesData] = await Promise.all([
+    prisma.resultContent.findUnique({ where: { code: upperCode } }),
+    prisma.axisDefinition.findMany()
+  ]);
 
-
-  const [origin, setOrigin] = useState('');
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-    // ... rest of fetch logic ...
-    // Fetch Result Content
-    fetch('/api/cms?type=Results')
-      .then(res => res.json())
-      .then(res => {
-        if (res.ok && res.data) {
-          const rows = res.data.slice(1);
-          const found = rows.find((r: any[]) => r[0] === upperCode);
-          if (found) {
-            setCopy({
-              title: found[1],
-              feature: JSON.parse(found[2]),
-              aruaru: JSON.parse(found[3]),
-              strength: JSON.parse(found[4]),
-              caution: JSON.parse(found[5]),
-              shareText: found[6]
-            });
-          }
-        }
-      });
-
-    // Fetch Axis Definitions
-    fetch('/api/cms?type=AxisDefinitions')
-      .then(res => res.json())
-      .then(res => {
-        if (res.ok && res.data) {
-          const rows = res.data.slice(1);
-          const map: any = {};
-          rows.forEach((r: any[]) => {
-            if (r[0]) map[r[0]] = { label: r[1], sub: r[2], desc: r[3] };
-          });
-          setAxes(map);
-        }
-      });
-  }, [upperCode]);
-
-  const intentUrl = origin ? buildShareIntentUrl(origin, upperCode, copy.shareText) : '#';
+  if (!result) notFound();
 
   // Parse percentages
   const lpct = Number(searchParams.lpct ?? 50);
@@ -113,7 +91,12 @@ export default function ResultPage({ params, searchParams }: Props) {
   const npct = Number(searchParams.npct ?? 50);
 
   // Parse codes for description
-  const codes = upperCode.split('') as (keyof typeof staticAxisDefinitions)[];
+  const codes = upperCode.split('');
+
+  const axesMap: Record<string, any> = {};
+  axesData.forEach(a => {
+    axesMap[a.code] = a;
+  });
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6 pt-12 pb-24">
@@ -126,10 +109,20 @@ export default function ResultPage({ params, searchParams }: Props) {
           あなたのタイプは...
         </h1>
         <div className="py-8">
-          <div className="premium-gradient inline-block rounded-3xl px-8 py-4 shadow-xl shadow-purple-100 text-center">
-            <span className="text-2xl font-black text-white sm:text-3xl">{copy.title}</span>
+          <div className="premium-gradient inline-block rounded-3xl px-8 py-4 shadow-xl shadow-purple-100 text-center relative overflow-hidden">
+            {result.imageUrl && (
+              <div className="absolute inset-0 z-0 opacity-20 bg-cover bg-center" style={{ backgroundImage: `url(${result.imageUrl})` }}></div>
+            )}
+            <span className="text-2xl font-black text-white sm:text-3xl relative z-10 drop-shadow-md">{result.title}</span>
           </div>
         </div>
+
+        {/* Dynamic Image Display */}
+        {result.imageUrl && (
+          <div className="w-full flex justify-center mb-6">
+            <img src={result.imageUrl} alt={result.title} className="rounded-3xl shadow-xl max-h-80 object-cover" />
+          </div>
+        )}
       </section>
 
       {/* Diagnostic Basis (Percentage Bars) */}
@@ -146,7 +139,7 @@ export default function ResultPage({ params, searchParams }: Props) {
       {/* Axis Descriptions */}
       <section className="animate-fade-in grid grid-cols-2 gap-4">
         {codes.map((c, i) => {
-          const def = axes[c];
+          const def = axesMap[c];
           if (!def) return null;
           return (
             <div key={i} className="rounded-2xl bg-gray-50 p-4">
@@ -163,24 +156,16 @@ export default function ResultPage({ params, searchParams }: Props) {
 
       {/* Main Content Blocks */}
       <div className="grid gap-6 sm:grid-cols-1">
-        <ContentCard icon="✨" title="あなたの特徴" items={copy.feature} />
-        <ContentCard icon="🤝" title="推し活あるある" items={copy.aruaru} />
-        <ContentCard icon="💪" title="推し活の強み" items={copy.strength} />
-        <ContentCard icon="⚠️" title="大切にしたいこと" items={copy.caution} />
+        <ContentCard icon="✨" title="あなたの特徴" items={result.feature as string[]} />
+        <ContentCard icon="🤝" title="推し活あるある" items={result.aruaru as string[]} />
+        <ContentCard icon="💪" title="推し活の強み" items={result.strength as string[]} />
+        <ContentCard icon="⚠️" title="大切にしたいこと" items={result.caution as string[]} />
       </div>
 
       {/* Share Section - Fixed at bottom for mobile */}
       <div className="fixed bottom-0 left-0 w-full bg-white/80 p-4 backdrop-blur-md sm:relative sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
         <div className="mx-auto max-w-2xl space-y-4">
-          <a
-            href={intentUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center gap-2 rounded-full bg-[#1DA1F2] py-4 font-bold text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-95"
-          >
-            <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.25h-6.657l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-            結果をXでシェアする
-          </a>
+          <ShareButton code={upperCode} shareText={result.shareText} />
           <div className="flex justify-center gap-4">
             <Link href="/" className="text-sm font-medium text-gray-400 hover:text-gray-600">
               ホームへ戻る

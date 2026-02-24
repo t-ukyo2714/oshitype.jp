@@ -27,7 +27,8 @@ export default function AdminResultsPage() {
                                 aruaru: row[3] ? JSON.parse(row[3]) : [],
                                 strength: row[4] ? JSON.parse(row[4]) : [],
                                 caution: row[5] ? JSON.parse(row[5]) : [],
-                                shareText: row[6] || ''
+                                shareText: row[6] || '',
+                                imageUrl: row[7] || ''
                             };
                         }
                     });
@@ -47,7 +48,7 @@ export default function AdminResultsPage() {
         const password = localStorage.getItem('admin_pass');
 
         try {
-            const header = ["Code", "Title", "Features", "Aruaru", "Strength", "Caution", "ShareText"];
+            const header = ["Code", "Title", "Features", "Aruaru", "Strength", "Caution", "ShareText", "ImageUrl"];
             const rows = [header, ...Object.entries(resultsData).map(([code, data]) => [
                 code,
                 data.title,
@@ -55,7 +56,8 @@ export default function AdminResultsPage() {
                 JSON.stringify(data.aruaru),
                 JSON.stringify(data.strength),
                 JSON.stringify(data.caution),
-                data.shareText
+                data.shareText,
+                data.imageUrl
             ])];
 
             const res = await fetch('/api/cms', {
@@ -115,6 +117,16 @@ export default function AdminResultsPage() {
                             className="w-full text-xl font-bold p-3 border-b-2 border-gray-50 focus:border-purple-200 outline-none"
                             value={current.title}
                             onChange={(e) => setResultsData({ ...resultsData, [activeCode]: { ...current, title: e.target.value } })}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Image URL (OGP & Header)</label>
+                        <input
+                            className="w-full text-sm p-3 bg-gray-50 rounded-2xl border border-transparent focus:border-purple-200 focus:bg-white outline-none transition-all"
+                            placeholder="https://example.com/image.png"
+                            value={current.imageUrl || ''}
+                            onChange={(e) => setResultsData({ ...resultsData, [activeCode]: { ...current, imageUrl: e.target.value } })}
                         />
                     </div>
 

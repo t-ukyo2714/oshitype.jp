@@ -22,6 +22,7 @@ model ResultContent {
   strength  Json
   caution   Json
   shareText String
+  imageUrl  String?
 }
 
 model AxisDefinition {
