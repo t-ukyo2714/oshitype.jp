@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateScore } from '@/lib/scoring';
 import { AgeBand, MemberMode, QuizPayload } from '@/lib/types';
+import { questions } from '@/data/questions';
 
 const ageBands: AgeBand[] = ['u18', '18_24', '25_34', '35_44', '45_54', '55_plus'];
 const memberModes: MemberMode[] = ['named', 'hakoshi', 'undecided', 'empty'];
@@ -22,7 +23,7 @@ function validatePayload(input: unknown): QuizPayload {
   if (!ageBands.includes(ageBand as AgeBand)) throw new Error('age_band is required');
 
   const answers = data.answers;
-  if (!Array.isArray(answers) || answers.length !== 20) throw new Error('answers must be 20 items');
+  if (!Array.isArray(answers) || answers.length !== questions.length) throw new Error(`answers must be ${questions.length} items`);
   const parsedAnswers = answers.map((a) => Number(a));
   if (parsedAnswers.some((a) => !Number.isInteger(a) || a < 1 || a > 5)) throw new Error('answers must be integer 1..5');
 

@@ -145,10 +145,11 @@ export default function QuizPage() {
                 </select>
               </div>
               {memberMode === 'named' && (
-                <div className="animate-fade-in space-y-2">
+                <div className="space-y-2">
                   <label className="block text-sm font-semibold text-gray-700">メンバー名 *</label>
                   <input
-                    className="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm focus:border-purple-300 focus:outline-none"
+                    className="w-full rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-focus focus:border-purple-300 focus:outline-none"
+                    placeholder="例: スングァン, ハニ"
                     value={oshiMember}
                     onChange={(e) => setOshiMember(e.target.value)}
                     maxLength={50}
