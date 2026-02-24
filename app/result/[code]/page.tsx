@@ -25,6 +25,27 @@ function ContentCard({ title, items, icon }: { title: string; items: string[]; i
   );
 }
 
+function AxisBar({ labelLeft, labelRight, value, color }: { labelLeft: string; labelRight: string; value: number; color: string }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-[11px] font-bold tracking-tighter text-gray-400 uppercase">
+        <span>{labelLeft}</span>
+        <span>{labelRight}</span>
+      </div>
+      <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-100">
+        <div
+          className="absolute h-full transition-all duration-1000 ease-out"
+          style={{ width: `${value}%`, backgroundColor: color }}
+        />
+      </div>
+      <div className="flex justify-between text-[13px] font-black text-gray-800">
+        <span className={value >= 50 ? 'text-purple-600' : ''}>{value}%</span>
+        <span className={value < 50 ? 'text-purple-600' : ''}>{100 - value}%</span>
+      </div>
+    </div>
+  );
+}
+
 type Props = {
   params: { code: string };
   searchParams: { lpct?: string; spct?: string; opct?: string; npct?: string };
@@ -52,6 +73,12 @@ export default function ResultPage({ params, searchParams }: Props) {
   const origin = `${protocol}://${host}`;
   const intentUrl = buildShareIntentUrl(origin, upperCode, copy.shareText);
 
+  // Parse percentages
+  const lpct = Number(searchParams.lpct ?? 50);
+  const spct = Number(searchParams.spct ?? 50);
+  const opct = Number(searchParams.opct ?? 50);
+  const npct = Number(searchParams.npct ?? 50);
+
   // Parse codes for description
   const codes = upperCode.split('') as (keyof typeof axisDefinitions)[];
 
@@ -66,9 +93,20 @@ export default function ResultPage({ params, searchParams }: Props) {
           あなたのタイプは...
         </h1>
         <div className="py-8">
-          <div className="premium-gradient inline-block rounded-3xl px-8 py-4 shadow-xl shadow-purple-100">
+          <div className="premium-gradient inline-block rounded-3xl px-8 py-4 shadow-xl shadow-purple-100 text-center">
             <span className="text-2xl font-black text-white sm:text-3xl">{copy.title}</span>
           </div>
+        </div>
+      </section>
+
+      {/* Diagnostic Basis (Percentage Bars) */}
+      <section className="animate-fade-in rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+        <h2 className="mb-6 text-center text-sm font-bold text-gray-400 uppercase tracking-widest">Diagnostic Basis</h2>
+        <div className="grid gap-8 sm:grid-cols-2">
+          <AxisBar labelLeft="Loop" labelRight="Keep" value={lpct} color="#6c5ce7" />
+          <AxisBar labelLeft="Solo" labelRight="Group" value={spct} color="#a29bfe" />
+          <AxisBar labelLeft="Observe" labelRight="Express" value={opct} color="#6c5ce7" />
+          <AxisBar labelLeft="Now" labelRight="Track" value={npct} color="#a29bfe" />
         </div>
       </section>
 
