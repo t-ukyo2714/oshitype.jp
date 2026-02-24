@@ -23,7 +23,7 @@ export default function QuizPage() {
   const [oshiGroup, setOshiGroup] = useState('');
   const [memberMode, setMemberMode] = useState<MemberMode>('empty');
   const [oshiMember, setOshiMember] = useState('');
-  const [answers, setAnswers] = useState<number[]>(Array.from({ length: 20 }, () => 3));
+  const [answers, setAnswers] = useState<number[]>(Array.from({ length: questions.length }, () => 0));
   const [ageBand, setAgeBand] = useState<AgeBand | ''>('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function QuizPage() {
   const progress = useMemo(() => {
     if (step === 'profile') return 5;
     if (step === 'age') return 95;
-    return Math.floor(10 + (currentQuizIdx / questions.length) * 80);
+    return Math.floor(10 + (currentQuizIdx / questions.length) * 85);
   }, [step, currentQuizIdx]);
 
   const canGoToQuiz = useMemo(() => {
@@ -47,9 +47,9 @@ export default function QuizPage() {
 
     // Auto-advance with small delay for better UX
     if (currentQuizIdx < questions.length - 1) {
-      setTimeout(() => setCurrentQuizIdx(idx => idx + 1), 200);
+      setTimeout(() => setCurrentQuizIdx(idx => idx + 1), 300);
     } else {
-      setTimeout(() => setStep('age'), 200);
+      setTimeout(() => setStep('age'), 400);
     }
   };
 
@@ -57,6 +57,12 @@ export default function QuizPage() {
     e.preventDefault();
     if (!ageBand) {
       setError('年代を選択してください');
+      return;
+    }
+
+    // Check if all answers are filled
+    if (answers.some(a => a === 0)) {
+      setError('すべての質問に回答してください');
       return;
     }
 
@@ -101,15 +107,15 @@ export default function QuizPage() {
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
           <div
-            className="premium-gradient h-full transition-all duration-500 ease-out"
+            className="premium-gradient h-full transition-all duration-700 ease-in-out"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      <div className="animate-fade-in relative flex-1">
+      <div className="relative flex-1">
         {step === 'profile' && (
-          <div className="space-y-8">
+          <div className="animate-fade-in space-y-8">
             <header className="space-y-2">
               <h1 className="text-2xl font-bold text-gray-900">推しについて教えてください</h1>
               <p className="text-sm text-gray-500">あなたの推し活スタイルに合わせて分析します。</p>
@@ -151,17 +157,24 @@ export default function QuizPage() {
               )}
             </div>
             <button
-              disabled={!canGoToQuiz}
-              onClick={() => setStep('quiz')}
-              className="premium-gradient w-full rounded-full py-4 font-bold text-white shadow-lg transition-opacity disabled:opacity-30"
+              onClick={() => {
+                if (canGoToQuiz) {
+                  setError('');
+                  setStep('quiz');
+                } else {
+                  setError('グループ名を入力してください（メンバー名を選択した場合はメンバー名も必須です）');
+                }
+              }}
+              className="premium-gradient w-full rounded-full py-4 font-bold text-white shadow-lg transition-opacity hover:opacity-90 active:scale-95"
             >
               診断をスタート
             </button>
+            {error && <p className="mt-2 text-center text-xs text-red-500">{error}</p>}
           </div>
         )}
 
         {step === 'quiz' && (
-          <div className="space-y-12">
+          <div key={currentQuizIdx} className="animate-slide-up space-y-12">
             <header className="space-y-2">
               <div className="text-xs font-bold tracking-widest text-purple-500 uppercase">Question {currentQuizIdx + 1} / {questions.length}</div>
               <h2 className="text-xl font-bold leading-snug text-gray-900 sm:text-2xl">
@@ -180,7 +193,7 @@ export default function QuizPage() {
                 <button
                   key={choice.v}
                   onClick={() => updateAnswer(choice.v)}
-                  className={`w-full rounded-2xl border-2 p-5 text-left transition-all hover:bg-purple-50 active:scale-[0.98] ${answers[currentQuizIdx] === choice.v ? 'border-purple-500 bg-purple-50 font-bold text-purple-700' : 'border-gray-100 bg-white text-gray-600'
+                  className={`w-full rounded-2xl border-2 p-5 text-left transition-all hover:bg-purple-50 active:scale-[0.98] ${answers[currentQuizIdx] === choice.v ? 'border-purple-500 bg-purple-50 font-bold text-purple-700 scale-[1.02] shadow-md' : 'border-gray-100 bg-white text-gray-600'
                     }`}
                 >
                   {choice.l}
