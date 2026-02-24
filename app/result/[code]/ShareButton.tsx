@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { buildShareIntentUrl } from '@/lib/result';
+import { buildShareIntentUrl, ResultCode } from '@/lib/result';
 
 export function ShareButton({ code, shareText }: { code: string; shareText: string }) {
     const [url, setUrl] = useState('#');
 
     useEffect(() => {
-        setUrl(buildShareIntentUrl(window.location.origin, code, shareText));
+        setUrl(buildShareIntentUrl(window.location.origin, code as ResultCode, shareText));
     }, [code, shareText]);
 
     return (

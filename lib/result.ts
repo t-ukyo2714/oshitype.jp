@@ -1,6 +1,8 @@
 import { resultCopy } from '@/data/resultCopy';
 import { ResultCode } from './types';
 
+export type { ResultCode };
+
 export const resultCodes = Object.keys(resultCopy) as ResultCode[];
 
 export function isResultCode(code: string): code is ResultCode {
