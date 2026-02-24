@@ -15,10 +15,10 @@ export async function GET(req: NextRequest) {
         } else if (type === 'Results') {
             const results = await prisma.resultContent.findMany();
             data = [
-                ["Code", "Title", "Features", "Aruaru", "Strength", "Caution", "ShareText", "ImageUrl"],
+                ["Code", "Title", "Features", "Aruaru", "Strength", "Caution", "ShareText", "ImageUrl", "OgpImageUrl"],
                 ...results.map(r => [
                     r.code, r.title, JSON.stringify(r.feature), JSON.stringify(r.aruaru),
-                    JSON.stringify(r.strength), JSON.stringify(r.caution), r.shareText, r.imageUrl || ''
+                    JSON.stringify(r.strength), JSON.stringify(r.caution), r.shareText, r.imageUrl || '', r.ogpImageUrl || ''
                 ])
             ];
         } else if (type === 'AxisDefinitions') {
@@ -68,7 +68,8 @@ export async function POST(req: NextRequest) {
                     strength: JSON.parse(r[4]),
                     caution: JSON.parse(r[5]),
                     shareText: r[6],
-                    imageUrl: r[7] || null
+                    imageUrl: r[7] || null,
+                    ogpImageUrl: r[8] || null
                 }))
             });
         } else if (type === 'AxisDefinitions') {

@@ -21,8 +21,9 @@ model ResultContent {
   aruaru    Json
   strength  Json
   caution   Json
-  shareText String
-  imageUrl  String?
+  shareText   String
+  imageUrl    String?
+  ogpImageUrl String?
 }
 
 model AxisDefinition {

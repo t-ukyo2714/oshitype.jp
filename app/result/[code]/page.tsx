@@ -21,13 +21,13 @@ export async function generateMetadata({ params }: { params: { code: string } })
     openGraph: {
       title,
       description,
-      images: result.imageUrl ? [result.imageUrl] : [],
+      images: result.ogpImageUrl ? [result.ogpImageUrl] : [],
     },
     twitter: {
-      card: result.imageUrl ? 'summary_large_image' : 'summary',
+      card: result.ogpImageUrl ? 'summary_large_image' : 'summary',
       title,
       description,
-      images: result.imageUrl ? [result.imageUrl] : [],
+      images: result.ogpImageUrl ? [result.ogpImageUrl] : [],
     },
   };
 }
