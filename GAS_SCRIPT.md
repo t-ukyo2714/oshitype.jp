@@ -9,47 +9,70 @@ Copy and paste the following script into your Google Sheet's Apps Script editor.
 // 4. Deploy > New Deployment > Web App
 // 5. Access: Anyone (Important!)
 
-const LOG_TOKEN = "your-secret-token-here"; // Change this to a secure random string
+const LOG_TOKEN = "your-secret-token-here";
 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-    
-    // Simple security check
     if (data.token !== LOG_TOKEN) {
-      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "forbidden" }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return response({ ok: false, error: "forbidden" });
     }
 
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    
-    // Append headers if empty
-    if (sheet.getLastRow() === 0) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const action = data.action || 'log_submission';
+
+    if (action === 'log_submission') {
+      const sheet = getOrCreateSheet(ss, "Log");
       sheet.appendRow([
-        "Timestamp", "Oshi Group", "Member Mode", "Oshi Member", "Age Band", 
-        "Code", "Lpct", "Spct", "Opct", "Npct", "User Agent"
+        data.created_at, data.oshi_group, data.member_mode, data.oshi_member,
+        data.age_band, data.code, data.Lpct, data.Spct, data.Opct, data.Npct, data.user_agent
       ]);
+      return response({ ok: true });
     }
 
-    sheet.appendRow([
-      data.created_at,
-      data.oshi_group,
-      data.member_mode,
-      data.oshi_member,
-      data.age_band,
-      data.code,
-      data.Lpct,
-      data.Spct,
-      data.Opct,
-      data.Npct,
-      data.user_agent
-    ]);
+    if (action === 'update_master') {
+      const sheet = ss.getSheetByName(data.type); // type: Questions, Results, AxisDefinitions
+      if (!sheet) return response({ ok: false, error: "sheet not found" });
+      
+      sheet.clear();
+      if (data.rows && data.rows.length > 0) {
+        sheet.getRange(1, 1, data.rows.length, data.rows[0].length).setValues(data.rows);
+      }
+      return response({ ok: true });
+    }
 
-    return ContentService.createTextOutput(JSON.stringify({ ok: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return response({ ok: false, error: "unknown action" });
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return response({ ok: false, error: err.toString() });
   }
+}
+
+function doGet(e) {
+  try {
+    const type = e.parameter.type; // Questions, Results, AxisDefinitions
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(type);
+    if (!sheet) return response({ ok: false, error: "sheet not found" });
+
+    const values = sheet.getDataRange().getValues();
+    return response({ ok: true, data: values });
+  } catch (err) {
+    return response({ ok: false, error: err.toString() });
+  }
+}
+
+function getOrCreateSheet(ss, name) {
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    if (name === "Log") {
+      sheet.appendRow(["Timestamp", "Oshi Group", "Member Mode", "Oshi Member", "Age Band", "Code", "Lpct", "Spct", "Opct", "Npct", "User Agent"]);
+    }
+  }
+  return sheet;
+}
+
+function response(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 ```

@@ -1,10 +1,11 @@
-import { resultCopy } from '@/data/resultCopy';
-import { axisDefinitions } from '@/data/axisDefinitions';
+'use client';
+
+import { resultCopy as staticResultCopy } from '@/data/resultCopy';
+import { axisDefinitions as staticAxisDefinitions } from '@/data/axisDefinitions';
 import { buildShareIntentUrl, isResultCode } from '@/lib/result';
-import { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 function ContentCard({ title, items, icon }: { title: string; items: string[]; icon: string }) {
   return (
@@ -51,27 +52,59 @@ type Props = {
   searchParams: { lpct?: string; spct?: string; opct?: string; npct?: string };
 };
 
-export async function generateMetadata({ params }: { params: { code: string } }): Promise<Metadata> {
-  const upperCode = params.code.toUpperCase();
-  if (!isResultCode(upperCode)) return { title: 'Not Found' };
-  const copy = resultCopy[upperCode];
-  return {
-    title: `${copy.title} | 推しタイプ診断`,
-    description: copy.shareText,
-    openGraph: { images: [`/og/${upperCode}`] },
-    twitter: { card: 'summary_large_image', images: [`/og/${upperCode}`] }
-  };
-}
+
+
+
 
 export default function ResultPage({ params, searchParams }: Props) {
   const upperCode = params.code.toUpperCase();
   if (!isResultCode(upperCode)) notFound();
 
-  const copy = resultCopy[upperCode];
-  const host = headers().get('host') ?? 'localhost:3000';
-  const protocol = host.includes('localhost') ? 'http' : 'https';
-  const origin = `${protocol}://${host}`;
-  const intentUrl = buildShareIntentUrl(origin, upperCode, copy.shareText);
+  const [copy, setCopy] = useState<any>(staticResultCopy[upperCode as keyof typeof staticResultCopy]);
+  const [axes, setAxes] = useState<any>(staticAxisDefinitions);
+
+
+  const [origin, setOrigin] = useState('');
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+    // ... rest of fetch logic ...
+    // Fetch Result Content
+    fetch('/api/cms?type=Results')
+      .then(res => res.json())
+      .then(res => {
+        if (res.ok && res.data) {
+          const rows = res.data.slice(1);
+          const found = rows.find((r: any[]) => r[0] === upperCode);
+          if (found) {
+            setCopy({
+              title: found[1],
+              feature: JSON.parse(found[2]),
+              aruaru: JSON.parse(found[3]),
+              strength: JSON.parse(found[4]),
+              caution: JSON.parse(found[5]),
+              shareText: found[6]
+            });
+          }
+        }
+      });
+
+    // Fetch Axis Definitions
+    fetch('/api/cms?type=AxisDefinitions')
+      .then(res => res.json())
+      .then(res => {
+        if (res.ok && res.data) {
+          const rows = res.data.slice(1);
+          const map: any = {};
+          rows.forEach((r: any[]) => {
+            if (r[0]) map[r[0]] = { label: r[1], sub: r[2], desc: r[3] };
+          });
+          setAxes(map);
+        }
+      });
+  }, [upperCode]);
+
+  const intentUrl = origin ? buildShareIntentUrl(origin, upperCode, copy.shareText) : '#';
 
   // Parse percentages
   const lpct = Number(searchParams.lpct ?? 50);
@@ -113,7 +146,8 @@ export default function ResultPage({ params, searchParams }: Props) {
       {/* Axis Descriptions */}
       <section className="animate-fade-in grid grid-cols-2 gap-4">
         {codes.map((c, i) => {
-          const def = axisDefinitions[c];
+          const def = axes[c];
+          if (!def) return null;
           return (
             <div key={i} className="rounded-2xl bg-gray-50 p-4">
               <div className="flex items-center gap-2 mb-1">

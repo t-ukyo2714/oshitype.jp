@@ -16,19 +16,43 @@ const ageBands: { value: AgeBand; label: string }[] = [
 
 type Step = 'profile' | 'quiz' | 'age';
 
+import { questions as staticQuestions } from '@/data/questions';
+
 export default function QuizPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('profile');
+  const [questions, setQuestions] = useState<string[]>(Array.from(staticQuestions));
   const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
   const [oshiGroup, setOshiGroup] = useState('');
   const [memberMode, setMemberMode] = useState<MemberMode>('empty');
   const [oshiMember, setOshiMember] = useState('');
-  const [answers, setAnswers] = useState<number[]>(Array.from({ length: questions.length }, () => 0));
+  const [answers, setAnswers] = useState<number[]>([]);
   const [ageBand, setAgeBand] = useState<AgeBand | ''>('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/cms?type=Questions')
+      .then(res => res.json())
+      .then(res => {
+        if (res.ok && res.data && res.data.length > 0) {
+          const list = res.data.map((row: any[]) => row[0]).filter(Boolean);
+          if (list.length > 0) {
+            setQuestions(list);
+            setAnswers(new Array(list.length).fill(0));
+          }
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (answers.length === 0 && questions.length > 0) {
+      setAnswers(new Array(questions.length).fill(0));
+    }
+  }, [questions, answers.length]);
 
   const progress = useMemo(() => {
     if (step === 'profile') return 5;
@@ -196,7 +220,7 @@ export default function QuizPage() {
             <header className="space-y-2">
               <div className="text-xs font-bold tracking-widest text-purple-500 uppercase">Question {currentQuizIdx + 1} / {questions.length}</div>
               <h2 className="text-xl font-bold leading-snug text-gray-900 sm:text-2xl">
-                {questions[currentQuizIdx]}
+                {questions[currentQuizIdx] || 'Loading...'}
               </h2>
             </header>
 
