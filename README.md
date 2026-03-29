@@ -14,6 +14,33 @@
 ## 必要な環境変数
 - `GAS_WEBAPP_URL`
 - `LOG_TOKEN`
+- `DATABASE_URL`（PostgreSQL, Prisma用）
+- `ADMIN_PASSWORD`（未設定時は `admin`）
+
+## Vercelデプロイで `404: NOT_FOUND` が出るときの確認手順
+
+Vercelの白い画面で `404: NOT_FOUND`（`Code: NOT_FOUND`）が出る場合、**アプリ内部の404ではなく「そのURLにデプロイが割り当たっていない」ケース**がほとんどです。  
+このリポジトリではNext.jsのルート (`app/page.tsx`) があるため、正しくデプロイされていれば `/` でトップページが表示されます。
+
+1. **URLが正しいか確認**
+   - `https://<project-name>.vercel.app`（Production URL）を開く
+   - Preview URLや削除済みDeployment URLを開くと `NOT_FOUND` になります
+
+2. **Project Settings → General → Root Directory**
+   - このリポジトリのルート（`package.json` がある階層）を指定する
+   - Monorepo設定で別ディレクトリを向いていると、デプロイ自体は成功してもサイトが存在せず `NOT_FOUND` になります
+
+3. **Build & Output Settings**
+   - Framework Preset: `Next.js`
+   - Build Command: `npm run build`
+   - Output Directory: **空欄**（Next.js標準）
+
+4. **Production Branchに最新コミットをデプロイ**
+   - Vercel Dashboard → Deployments で `main`（または運用ブランチ）の最新成功デプロイを `Promote to Production`
+
+5. **Environment Variablesを設定**
+   - 少なくとも `DATABASE_URL`, `GAS_WEBAPP_URL`, `LOG_TOKEN` を Production/Preview それぞれに設定
+   - 未設定だとAPI系は失敗します（この場合は通常 500 で、Vercelの `NOT_FOUND` とは別症状）
 
 ## 実装者判断で要件追記
 1. `/quiz` の「プロフィール→Q1-20→年代」は単一ページ内でこの順序のセクションとして実装（別画面分割の指定が無かったため）。
